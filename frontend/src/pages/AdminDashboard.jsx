@@ -14,7 +14,9 @@ import {
     Trash2,
     Construction,
     Tag,
-    ArrowRight
+    ArrowRight,
+    ShieldAlert,
+    MessageSquare
 } from 'lucide-react';
 import StatCard from '../components/StatCard';
 import { cn } from '../lib/utils';
@@ -265,9 +267,16 @@ const AdminDashboard = () => {
                             </div>
 
                             <form onSubmit={handleUpdateStatus} className="p-10 space-y-8">
-                                <div className="p-6 bg-indigo-50/50 rounded-3xl border border-indigo-100 border-dashed">
-                                    <h4 className="text-lg font-black text-slate-900 mb-2">{selectedComplaint.title}</h4>
-                                    <p className="text-xs text-slate-500 font-medium leading-relaxed italic line-clamp-2">"{selectedComplaint.description}"</p>
+                                <div className="p-6 bg-indigo-50/50 rounded-3xl border border-indigo-100 border-dashed space-y-4">
+                                    <div>
+                                        <h4 className="text-lg font-black text-slate-900 mb-2">{selectedComplaint.title}</h4>
+                                        <p className="text-xs text-slate-500 font-medium leading-relaxed italic">"{selectedComplaint.description}"</p>
+                                    </div>
+                                    {selectedComplaint.image_url && (
+                                        <div className="w-full h-48 rounded-2xl overflow-hidden shadow-sm border border-indigo-100 mt-2">
+                                            <img src={selectedComplaint.image_url} alt="Reported issue" className="w-full h-full object-cover" />
+                                        </div>
+                                    )}
                                 </div>
 
                                 <div className="space-y-3">

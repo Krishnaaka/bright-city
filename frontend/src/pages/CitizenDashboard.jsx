@@ -15,7 +15,8 @@ import {
     Zap,
     Trash2,
     Construction,
-    ArrowUpRight
+    ArrowUpRight,
+    Camera
 } from 'lucide-react';
 import StatCard from '../components/StatCard';
 import { cn } from '../lib/utils';
@@ -38,6 +39,10 @@ const CitizenDashboard = () => {
     const [description, setDescription] = useState('');
     const [category, setCategory] = useState('road');
     const [searchQuery, setSearchQuery] = useState('');
+    const [selectedFile, setSelectedFile] = useState(null);
+    const [previewUrl, setPreviewUrl] = useState('');
+    const [isUploading, setIsUploading] = useState(false);
+    const [selectedComplaint, setSelectedComplaint] = useState(null);
 
     const location = useLocation();
 
@@ -68,14 +73,39 @@ const CitizenDashboard = () => {
         }
     };
 
+    const handleFileChange = (e) => {
+        const file = e.target.files[0];
+        if (file) {
+            setSelectedFile(file);
+            setPreviewUrl(URL.createObjectURL(file));
+        }
+    };
+
     const handleSubmit = async (e) => {
         e.preventDefault();
+        setIsUploading(true);
         try {
             const token = localStorage.getItem('token');
+            let uploadedImageUrl = null;
+
+            if (selectedFile) {
+                const formData = new FormData();
+                formData.append('file', selectedFile);
+                
+                const uploadRes = await axios.post('/api/upload', formData, {
+                    headers: {
+                        'Content-Type': 'multipart/form-data',
+                        Authorization: `Bearer ${token}`
+                    }
+                });
+                uploadedImageUrl = uploadRes.data.image_url;
+            }
+
             await axios.post('/api/complaints', {
                 title,
                 description,
-                category
+                category,
+                image_url: uploadedImageUrl
             }, {
                 headers: { Authorization: `Bearer ${token}` }
             });
@@ -83,8 +113,12 @@ const CitizenDashboard = () => {
             setIsSubmitOpen(false);
             setTitle('');
             setDescription('');
+            setSelectedFile(null);
+            setPreviewUrl('');
         } catch (error) {
-            alert('Failed to submit complaint');
+            alert(error.response?.data?.detail || 'Failed to submit complaint');
+        } finally {
+            setIsUploading(false);
         }
     };
 
@@ -191,6 +225,7 @@ const CitizenDashboard = () => {
                                             initial={{ opacity: 0, x: -10 }}
                                             animate={{ opacity: 1, x: 0 }}
                                             transition={{ delay: i * 0.05 }}
+                                            onClick={() => setSelectedComplaint(complaint)}
                                             className="hover:bg-indigo-50/30 transition-all group cursor-pointer"
                                         >
                                             <td className="px-6 py-4 max-w-xs">
@@ -318,6 +353,44 @@ const CitizenDashboard = () => {
                                     ></textarea>
                                 </div>
 
+
+
+                                <div className="space-y-3">
+                                    <label className="text-xs font-black text-gray-400 uppercase tracking-widest">Attach Photo of Issue (Optional)</label>
+                                    <div className="flex flex-col items-center justify-center p-6 bg-gray-50 border border-gray-100 rounded-2xl hover:border-indigo-300 transition-all cursor-pointer relative group">
+                                        <input
+                                            type="file"
+                                            accept="image/*"
+                                            onChange={handleFileChange}
+                                            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                                        />
+                                        {previewUrl ? (
+                                            <div className="relative w-full h-40 rounded-xl overflow-hidden shadow-md">
+                                                <img src={previewUrl} alt="Preview" className="w-full h-full object-cover" />
+                                                <button
+                                                    type="button"
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        setSelectedFile(null);
+                                                        setPreviewUrl('');
+                                                    }}
+                                                    className="absolute top-2 right-2 p-1.5 bg-red-600 text-white rounded-full hover:bg-red-700 transition-colors shadow-lg"
+                                                >
+                                                    <X size={16} />
+                                                </button>
+                                            </div>
+                                        ) : (
+                                            <div className="text-center py-4 space-y-2">
+                                                <div className="w-12 h-12 bg-white rounded-xl flex items-center justify-center mx-auto text-gray-400 group-hover:text-indigo-600 group-hover:bg-indigo-50 shadow-sm border border-gray-100 transition-all">
+                                                    <Camera size={20} />
+                                                </div>
+                                                <p className="text-sm font-bold text-gray-700">Click or drag photo here</p>
+                                                <p className="text-xs text-gray-400">PNG, JPG, or JPEG up to 10MB</p>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+
                                 <div className="flex items-center justify-between pt-4 gap-6">
                                     <button
                                         type="button"
@@ -328,13 +401,118 @@ const CitizenDashboard = () => {
                                     </button>
                                     <button
                                         type="submit"
-                                        className="flex-1 py-4 bg-indigo-600 text-white text-md font-black rounded-2xl hover:bg-indigo-700 shadow-xl shadow-indigo-200 transition-all active:scale-95 flex items-center justify-center gap-2"
+                                        disabled={isUploading}
+                                        className="flex-1 py-4 bg-indigo-600 text-white text-md font-black rounded-2xl hover:bg-indigo-700 shadow-xl shadow-indigo-200 transition-all active:scale-95 flex items-center justify-center gap-2 disabled:opacity-50"
                                     >
-                                        Submit Official Report
+                                        {isUploading ? 'Uploading & Submitting...' : 'Submit Official Report'}
                                         <Plus size={20} />
                                     </button>
                                 </div>
                             </form>
+                        </motion.div>
+                    </div>
+                )}
+            </AnimatePresence>
+
+            {/* View Details Modal */}
+            <AnimatePresence>
+                {selectedComplaint && (
+                    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+                        <motion.div
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            onClick={() => setSelectedComplaint(null)}
+                            className="absolute inset-0 bg-slate-900/60 backdrop-blur-md"
+                        />
+                        <motion.div
+                            initial={{ opacity: 0, scale: 0.95, y: 30 }}
+                            animate={{ opacity: 1, scale: 1, y: 0 }}
+                            exit={{ opacity: 0, scale: 0.95, y: 30 }}
+                            className="relative w-full max-w-xl bg-white rounded-[2rem] shadow-2xl overflow-hidden border border-white/20"
+                        >
+                            <div className="bg-gradient-to-br from-indigo-600 to-blue-700 px-8 py-10 text-white relative">
+                                <div className="absolute top-6 right-6">
+                                    <button onClick={() => setSelectedComplaint(null)} className="p-2 hover:bg-white/10 rounded-full transition-colors">
+                                        <X size={24} className="text-white/80" />
+                                    </button>
+                                </div>
+                                <div className="flex items-center gap-2 mb-2">
+                                    <span className={cn(
+                                        "inline-flex items-center px-2.5 py-1 rounded-full text-[9px] font-black border uppercase tracking-widest shadow-sm bg-white text-indigo-700 border-white/10"
+                                    )}>
+                                        Case ID: BC-{selectedComplaint.id}
+                                    </span>
+                                </div>
+                                <h3 className="text-3xl font-black tracking-tight mb-2">{selectedComplaint.title}</h3>
+                                <p className="text-indigo-100 text-sm uppercase font-black tracking-widest opacity-80 flex items-center gap-2">
+                                    <CategoryIcon category={selectedComplaint.category} size={14} className="text-white" />
+                                    {selectedComplaint.category}
+                                </p>
+                            </div>
+
+                            <div className="p-10 space-y-8 max-h-[70vh] overflow-y-auto">
+                                <div className="space-y-3">
+                                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Description</label>
+                                    <p className="text-gray-700 font-medium leading-relaxed bg-gray-50 p-5 rounded-2xl border border-gray-100">
+                                        {selectedComplaint.description}
+                                    </p>
+                                </div>
+
+                                {selectedComplaint.image_url && (
+                                    <div className="space-y-3">
+                                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Reported Photo</label>
+                                        <div className="w-full h-64 rounded-2xl overflow-hidden shadow-md border border-gray-100">
+                                            <img 
+                                                src={selectedComplaint.image_url} 
+                                                alt="Reported Issue" 
+                                                className="w-full h-full object-cover hover:scale-105 transition-transform duration-500" 
+                                            />
+                                        </div>
+                                    </div>
+                                )}
+
+                                <div className="grid grid-cols-2 gap-6">
+                                    <div className="space-y-1">
+                                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Current Status</label>
+                                        <div>
+                                            <span className={cn(
+                                                "inline-flex items-center px-3 py-1.5 rounded-full text-[10px] font-black border uppercase tracking-widest shadow-sm",
+                                                getStatusStyles(selectedComplaint.status)
+                                            )}>
+                                                {selectedComplaint.status.replace('_', ' ')}
+                                            </span>
+                                        </div>
+                                    </div>
+                                    <div className="space-y-1">
+                                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Reported On</label>
+                                        <p className="text-sm font-bold text-gray-500">
+                                            {new Date(selectedComplaint.created_at).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
+                                        </p>
+                                    </div>
+                                </div>
+
+                                {selectedComplaint.remarks && selectedComplaint.remarks.length > 0 && (
+                                    <div className="space-y-4 pt-4 border-t border-gray-100">
+                                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest flex items-center gap-2">
+                                            <span>Resolution Remarks & History</span>
+                                        </label>
+                                        <div className="space-y-3">
+                                            {selectedComplaint.remarks.map((r, idx) => (
+                                                <div key={r.id || idx} className="p-4 bg-emerald-50/50 border border-emerald-100 rounded-2xl relative">
+                                                    <p className="text-xs font-semibold text-emerald-800 leading-relaxed">
+                                                        "{r.remark}"
+                                                    </p>
+                                                    <div className="flex justify-between items-center mt-2.5 text-[9px] font-bold text-emerald-600/75 uppercase tracking-wider">
+                                                        <span>Admin Representative</span>
+                                                        <span>{new Date(r.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
                         </motion.div>
                     </div>
                 )}

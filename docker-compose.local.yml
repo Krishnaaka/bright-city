@@ -1,0 +1,130 @@
+services:
+
+  # ─── PostgreSQL Database ─────────────────────────────────────────────────
+  db:
+    image: postgres:15-alpine
+    restart: always
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-brightcity_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-brightcity_password}
+      POSTGRES_DB: ${POSTGRES_DB:-brightcity_db}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - app_network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-brightcity_user}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ─── FastAPI Backend ─────────────────────────────────────────────────────
+  backend:
+    build: ./backend
+    restart: always
+    ports:
+      - "8000:8000"
+    environment:
+      DATABASE_URL: ${DATABASE_URL:-postgresql://brightcity_user:brightcity_password@db:5432/brightcity_db}
+      SECRET_KEY: ${SECRET_KEY:-changeme-in-production}
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - app_network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ─── React/Vite Frontend (Nginx) ─────────────────────────────────────────
+  frontend:
+    build: ./frontend
+    restart: always
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+    networks:
+      - app_network
+
+  # ─── Prometheus Monitoring ───────────────────────────────────────────────
+  prometheus:
+    image: prom/prometheus:v2.50.1
+    restart: always
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+      - "--web.console.libraries=/usr/share/prometheus/console_libraries"
+      - "--web.console.templates=/usr/share/prometheus/consoles"
+      - "--storage.tsdb.retention.time=15d"
+    networks:
+      - app_network
+
+  # ─── Grafana Dashboard ───────────────────────────────────────────────────
+  grafana:
+    image: grafana/grafana:10.3.1
+    restart: always
+    ports:
+      - "3000:3000"
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD:-brightcity2024}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+    depends_on:
+      - prometheus
+    networks:
+      - app_network
+
+  # ─── Node Exporter (EC2 system metrics) ──────────────────────────────────
+  node-exporter:
+    image: prom/node-exporter:v1.7.0
+    restart: always
+    ports:
+      - "9100:9100"
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+    command:
+      - "--path.procfs=/host/proc"
+      - "--path.sysfs=/host/sys"
+      - "--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)"
+    networks:
+      - app_network
+
+  # ─── cAdvisor (Docker container metrics) ─────────────────────────────────
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:v0.47.2
+    restart: always
+    ports:
+      - "8080:8080"
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:rw
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+    networks:
+      - app_network
+
+# ─── Networks ────────────────────────────────────────────────────────────────
+networks:
+  app_network:
+    driver: bridge
+
+# ─── Volumes ─────────────────────────────────────────────────────────────────
+volumes:
+  postgres_data:
+  prometheus_data:
+  grafana_data:

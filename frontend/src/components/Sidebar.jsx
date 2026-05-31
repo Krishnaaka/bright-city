@@ -1,5 +1,6 @@
 import React from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
+import { isAdmin } from '../utils/auth';
 import {
     Home,
     LayoutDashboard,
@@ -78,24 +79,26 @@ const Sidebar = () => {
                     ))}
 
                     {/* Admin Section */}
-                    <div className="pt-8 pb-2">
-                        {isOpen && <p className="px-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">Administration</p>}
-                        <div className="mt-2 space-y-1">
-                            {adminItems.map((item) => (
-                                <NavLink
-                                    key={item.path}
-                                    to={item.path}
-                                    className={({ isActive }) => cn(
-                                        "sidebar-link",
-                                        isActive ? "sidebar-link-active" : "sidebar-link-inactive"
-                                    )}
-                                >
-                                    <item.icon size={20} className={cn(isOpen ? "mr-1" : "m-0")} />
-                                    {isOpen && <span>{item.label}</span>}
-                                </NavLink>
-                            ))}
+                    {isAdmin() && (
+                        <div className="pt-8 pb-2">
+                            {isOpen && <p className="px-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">Administration</p>}
+                            <div className="mt-2 space-y-1">
+                                {adminItems.map((item) => (
+                                    <NavLink
+                                        key={item.path}
+                                        to={item.path}
+                                        className={({ isActive }) => cn(
+                                            "sidebar-link",
+                                            isActive ? "sidebar-link-active" : "sidebar-link-inactive"
+                                        )}
+                                    >
+                                        <item.icon size={20} className={cn(isOpen ? "mr-1" : "m-0")} />
+                                        {isOpen && <span>{item.label}</span>}
+                                    </NavLink>
+                                ))}
+                            </div>
                         </div>
-                    </div>
+                    )}
                 </nav>
 
                 {/* User Footer */}

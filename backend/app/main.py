@@ -1,9 +1,12 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, File, UploadFile
 from sqlalchemy.orm import Session
 from typing import List
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from app import crud, models, schemas, auth, database
 from jose import JWTError, jwt
+import shutil
+import uuid
+import os
 
 router = APIRouter()
 
@@ -44,7 +47,7 @@ def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(), db:
             detail="Incorrect username or password",
             headers={"WWW-Authenticate": "Bearer"},
         )
-    access_token = auth.create_access_token(data={"sub": user.username})
+    access_token = auth.create_access_token(data={"sub": user.username, "role": user.role.value})
     return {"access_token": access_token, "token_type": "bearer"}
 
 @router.get("/complaints", response_model=List[schemas.Complaint])
@@ -82,3 +85,21 @@ def update_complaint_status(
     if not db_complaint:
         raise HTTPException(status_code=404, detail="Complaint not found")
     return db_complaint
+
+@router.post("/upload")
+def upload_file(
+    file: UploadFile = File(...),
+    current_user: models.User = Depends(get_current_user)
+):
+    if not file.content_type.startswith("image/"):
+        raise HTTPException(status_code=400, detail="File must be an image")
+    
+    os.makedirs("static/uploads", exist_ok=True)
+    ext = os.path.splitext(file.filename)[1]
+    filename = f"{uuid.uuid4()}{ext}"
+    filepath = os.path.join("static/uploads", filename)
+    
+    with open(filepath, "wb") as buffer:
+        shutil.copyfileobj(file.file, buffer)
+        
+    return {"image_url": f"/api/static/uploads/{filename}"}

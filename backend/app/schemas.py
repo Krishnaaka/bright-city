@@ -29,17 +29,27 @@ class ComplaintBase(BaseModel):
     title: str
     description: str
     category: str
+    image_url: Optional[str] = None
 
 class ComplaintCreate(ComplaintBase):
     pass
 
+class AdminRemark(BaseModel):
+    id: int
+    remark: str
+    created_at: datetime
+    admin_id: int
+
+    class Config:
+        from_attributes = True
+
 class Complaint(ComplaintBase):
     id: int
     status: ComplaintStatus
-    image_url: Optional[str] = None
     created_at: datetime
     updated_at: datetime
     user_id: int
+    remarks: List[AdminRemark] = []
 
     class Config:
         from_attributes = True
