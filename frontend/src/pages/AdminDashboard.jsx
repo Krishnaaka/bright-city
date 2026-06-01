@@ -16,7 +16,8 @@ import {
     Tag,
     ArrowRight,
     ShieldAlert,
-    MessageSquare
+    MessageSquare,
+    Camera
 } from 'lucide-react';
 import StatCard from '../components/StatCard';
 import { cn } from '../lib/utils';
@@ -39,6 +40,8 @@ const AdminDashboard = () => {
     const [statusUpdate, setStatusUpdate] = useState('');
     const [remark, setRemark] = useState('');
     const [isUpdating, setIsUpdating] = useState(false);
+    const [selectedFile, setSelectedFile] = useState(null);
+    const [previewUrl, setPreviewUrl] = useState('');
 
     useEffect(() => {
         fetchComplaints();
@@ -58,20 +61,46 @@ const AdminDashboard = () => {
         }
     };
 
+    const handleFileChange = (e) => {
+        const file = e.target.files[0];
+        if (file) {
+            setSelectedFile(file);
+            setPreviewUrl(URL.createObjectURL(file));
+        }
+    };
+
     const handleUpdateStatus = async (e) => {
         e.preventDefault();
         setIsUpdating(true);
         try {
             const token = localStorage.getItem('token');
+            let resolvedImageUrl = null;
+
+            if (statusUpdate === 'resolved' && selectedFile) {
+                const formData = new FormData();
+                formData.append('file', selectedFile);
+                
+                const uploadRes = await axios.post('/api/upload', formData, {
+                    headers: {
+                        'Content-Type': 'multipart/form-data',
+                        Authorization: `Bearer ${token}`
+                    }
+                });
+                resolvedImageUrl = uploadRes.data.image_url;
+            }
+
             await axios.put(`/api/complaints/${selectedComplaint.id}/status`, {
                 status: statusUpdate,
-                remark: remark
+                remark: remark,
+                resolved_image_url: resolvedImageUrl
             }, {
                 headers: { Authorization: `Bearer ${token}` }
             });
             fetchComplaints();
             setSelectedComplaint(null);
             setRemark('');
+            setSelectedFile(null);
+            setPreviewUrl('');
         } catch (error) {
             alert(error.response?.data?.detail || 'Failed to update status. Ensure you are logged in as an Admin.');
         } finally {
@@ -213,6 +242,8 @@ const AdminDashboard = () => {
                                                 onClick={() => {
                                                     setSelectedComplaint(complaint);
                                                     setStatusUpdate(complaint.status);
+                                                    setSelectedFile(null);
+                                                    setPreviewUrl('');
                                                 }}
                                                 className="px-4 py-2 text-[10px] font-black text-white bg-indigo-600 hover:bg-slate-900 rounded-xl transition-all active:scale-95 shadow-lg shadow-indigo-100 uppercase tracking-widest"
                                             >
@@ -315,6 +346,44 @@ const AdminDashboard = () => {
                                         </div>
                                     </div>
                                 </div>
+
+                                {statusUpdate === 'resolved' && (
+                                    <div className="space-y-3">
+                                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1">Resolution Photo (Optional)</label>
+                                        <div className="flex flex-col items-center justify-center p-6 bg-slate-50 border border-slate-100 rounded-3xl hover:border-indigo-300 transition-all cursor-pointer relative group">
+                                            <input
+                                                type="file"
+                                                accept="image/*"
+                                                onChange={handleFileChange}
+                                                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                                            />
+                                            {previewUrl ? (
+                                                <div className="relative w-full h-40 rounded-2xl overflow-hidden shadow-md">
+                                                    <img src={previewUrl} alt="Preview" className="w-full h-full object-cover" />
+                                                    <button
+                                                        type="button"
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            setSelectedFile(null);
+                                                            setPreviewUrl('');
+                                                        }}
+                                                        className="absolute top-2 right-2 p-1.5 bg-red-600 text-white rounded-full hover:bg-red-700 transition-colors shadow-lg"
+                                                    >
+                                                        <X size={16} />
+                                                    </button>
+                                                </div>
+                                            ) : (
+                                                <div className="text-center py-2 space-y-2">
+                                                    <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center mx-auto text-slate-400 group-hover:text-indigo-600 group-hover:bg-indigo-50 shadow-sm border border-slate-100 transition-all">
+                                                        <Camera size={18} />
+                                                    </div>
+                                                    <p className="text-xs font-bold text-slate-700">Attach proof of resolution</p>
+                                                    <p className="text-[10px] text-slate-400">PNG, JPG or JPEG</p>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+                                )}
 
                                 <div className="flex items-center justify-between pt-6 gap-6">
                                     <button

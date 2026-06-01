@@ -492,6 +492,33 @@ const CitizenDashboard = () => {
                                     </div>
                                 </div>
 
+                                {selectedComplaint.status === 'resolved' && (
+                                    <div className="space-y-4 pt-4 border-t-2 border-dashed border-emerald-100 bg-emerald-50/20 p-5 rounded-3xl border border-emerald-50">
+                                        <div className="flex items-center gap-2 mb-1">
+                                            <span className="px-2.5 py-0.5 bg-emerald-600 text-[9px] font-black text-white rounded-md uppercase tracking-widest">
+                                                Issue Resolved
+                                            </span>
+                                        </div>
+                                        <h4 className="text-lg font-black text-emerald-900 tracking-tight">🎉 Congratulations & Thank You!</h4>
+                                        <p className="text-xs text-emerald-700 font-bold leading-relaxed">
+                                            Great news! The city administration has resolved this reported issue. Thank you for reporting this issue and playing a key role in keeping our city bright, clean, and safe!
+                                        </p>
+                                        
+                                        {selectedComplaint.resolved_image_url && (
+                                            <div className="space-y-3 pt-2">
+                                                <label className="text-[9px] font-black text-emerald-600 uppercase tracking-widest">Resolution Proof Photo</label>
+                                                <div className="w-full h-60 rounded-2xl overflow-hidden shadow-sm border border-emerald-100">
+                                                    <img 
+                                                        src={selectedComplaint.resolved_image_url} 
+                                                        alt="Resolved Issue" 
+                                                        className="w-full h-full object-cover" 
+                                                    />
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+
                                 {selectedComplaint.remarks && selectedComplaint.remarks.length > 0 && (
                                     <div className="space-y-4 pt-4 border-t border-gray-100">
                                         <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest flex items-center gap-2">

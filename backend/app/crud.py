@@ -38,6 +38,9 @@ def update_complaint_status(db: Session, complaint_id: int, status_update: schem
         old_status = db_complaint.status
         db_complaint.status = status_update.status
         
+        if status_update.resolved_image_url:
+            db_complaint.resolved_image_url = status_update.resolved_image_url
+        
         # Log history
         history = models.ComplaintStatusHistory(
             complaint_id=complaint_id,

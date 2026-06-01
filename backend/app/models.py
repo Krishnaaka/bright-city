@@ -35,6 +35,7 @@ class Complaint(Base):
     category = Column(String) # road, water, garbage, electricity
     status = Column(Enum(ComplaintStatus), default=ComplaintStatus.PENDING)
     image_url = Column(String, nullable=True)
+    resolved_image_url = Column(String, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     user_id = Column(Integer, ForeignKey("users.id"))

@@ -50,6 +50,7 @@ class Complaint(ComplaintBase):
     updated_at: datetime
     user_id: int
     remarks: List[AdminRemark] = []
+    resolved_image_url: Optional[str] = None
 
     class Config:
         from_attributes = True
@@ -57,3 +58,4 @@ class Complaint(ComplaintBase):
 class ComplaintStatusUpdate(BaseModel):
     status: ComplaintStatus
     remark: Optional[str] = None
+    resolved_image_url: Optional[str] = None
